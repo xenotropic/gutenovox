@@ -171,9 +171,9 @@ if ($_GET['author'] != null ||
 	  $n++;
 	}
       } else echo "None found";
-      
-      echo " </td><td>";
-      echo getReadTimeForEtext ($row['etext_id']) . "</td></tr>"  ;
+      $times = getReadTimeForEtext ($row['etext_id']);
+      echo " </td><td sorttable_customkey=\"" . $times['filesize'] . "\">";
+      echo  $times['readable'] . "</td></tr>"  ;
     }
     echo "</table>";
   }
@@ -202,7 +202,8 @@ if ($_GET['author'] != null ||
       $first = true;
       while ($row = $stmt->fetch(PDO::FETCH_ASSOC) ) {
 	if ( $first )  {
-	  echo "<table class=\"sortable\"><tr><th><u>Titles by ".$row['name']."</u> &nbsp; </th><th>LibriVox recordings &nbsp;</th><th>Est. Read Time</th>";
+	  echo "<table class=\"sortable\"><colgroup> <col span=\"1\" style=\"width: 70%;\"> <col span=\"1\" style=\"width: 15%;\"> <col span=\"1\" style=\"width: 15%;\"> <col span=\"1\" style=\"width: 10%;\">  </colgroup>";
+	  echo "<tr><th><u>Titles by ".$row['name']."</u> &nbsp; </th><th>LibriVox recordings &nbsp;</th><th>Est. Read Time</th>";
 	  //	  echo "<th>etext_id</th>";
 	  echo "</tr>";
 	  $first = false;
@@ -232,7 +233,9 @@ if ($_GET['author'] != null ||
 	    $n++;
 	  }
 	} else echo "None found";
-	echo "</td><td>".  getReadTimeForEtext ($row['etext_id']) ."</td></tr>";
+      $times = getReadTimeForEtext ($row['etext_id']);
+      echo " </td><td sorttable_customkey=\"" . $times['filesize'] . "\">";
+      echo  $times['readable'] . "</td></tr>";
       }
       echo "</table>";
     } // end author table
@@ -244,7 +247,8 @@ if ($_GET['author'] != null ||
       $first = true;
       while ($row = $stmt->fetch(PDO::FETCH_ASSOC) ) {
 	if ( $first )  {
-	  echo "<table class=\"sortable\"><tr><th><u>".$row['name']."</u> as contributor &nbsp; </th><th>LibriVox recordings</th><th>Est. Read Time</th></tr>";
+	  echo "<table class=\"sortable\"><colgroup> <col span=\"1\" style=\"width: 70%;\"> <col span=\"1\" style=\"width: 15%;\"> <col span=\"1\" style=\"width: 15%;\"> <col span=\"1\" style=\"width: 10%;\">  </colgroup>";
+	  echo "<tr><th><u>".$row['name']." as contributor</u> &nbsp; </th><th>LibriVox recordings</th><th>Est. Read Time</th></tr>";
 	  $first = false;
 	  if (strpos ( $row['name'], "," ) == false) {
 	    $author_last = $row['name'];
@@ -261,8 +265,8 @@ if ($_GET['author'] != null ||
 	$title = substr ( $title, 0, strpos ( $title, "\"]") );
 	$title = str_replace ( '\n', " - ", $title); 
 	$title = str_replace ( '\"', "\"", $title); 
+	echo "<tr><td><a target=\"_guten\"href=\"http://www.gutenberg.org/ebooks/" . $row['etext_id'] . "\">" . $title . "</a></td><td>";
 
-	echo "<tr><td>$title</td><td>";
 	$recording_urls = getLVRecordingsForGID ( $librivox_entries, $row['etext_id'], $row['title'] );
 	if ( ! empty ($recording_urls) ) {
 	  $n = 1;
@@ -271,7 +275,9 @@ if ($_GET['author'] != null ||
 	    $n++;
 	  }
 	} else echo "None found";
-	echo "</td><td>".  getReadTimeForEtext ($row['etext_id']) ."</td></tr>";
+	$times = getReadTimeForEtext ($row['etext_id']);
+	echo " </td><td sorttable_customkey=\"" . $times['filesize'] . "\">";
+	echo  $times['readable'] . "</td></tr>"  ;
       }
       echo "</table>";
     } // end contrib table
@@ -340,6 +346,7 @@ function getLVRecordingsByTitle ( $title, $author ) {
 
 function getReadTimeForEtext ( $etext_id ) {
   global $db_gb;
+  $retval = array();
   $stmt = $db_gb->prepare ("SELECT * FROM files WHERE etext_id=:id" );
   $stmt->bindValue (':id', $etext_id);
   $stmt->execute();
@@ -347,14 +354,16 @@ function getReadTimeForEtext ( $etext_id ) {
   while ($row = $stmt->fetch(PDO::FETCH_ASSOC) ) {
     if ( endsWith ( $row['url'], 'txt' ) ) $file_size = $row['size'];
   }  
-  if ( $file_size == -1 ) return ("Unknown"); 
   $file_size -= 18233; // Not counting gutenberg license
-
+  if ( $file_size < 0 ) $file_size = 0;
+  $retval['filesize'] = $file_size;
   // return ( round ($file_size/1421)  . " mins"  );
   //  if ( $file_size < 85260 ) return ( (round ($file_size/1421) ) . " mins");
   $hours = floor ( ($file_size/900)/60  );
   $minutes = (round ( $file_size/900) ) % 60;
-  return ( "$hours h $minutes min" );
+  $retval['readable'] = "$hours h $minutes min";
+  if ( $file_size == 0 ) $retval['readable'] = "Unknown";
+  return $retval;
 }
 
 function endsWith($haystack, $needle)
