@@ -9,12 +9,12 @@
 
 // caching script from http://wesbos.com/simple-php-page-caching-technique/
 // define the path and name of cached file
-$cachefile = 'cached-files/'.date('M-d-Y').'.php';
+$cachefile = 'cached-files/'.date('M-d-Y').'.cache';
 // define how long we want to keep the file in seconds. I set mine to 5 hours.
 $cachetime = 18000;
 // Check if the cached file is still fresh. If it is, serve it up and exit.
 if (file_exists($cachefile) && time() - $cachetime < filemtime($cachefile)) {
-  include($cachefile);
+  readfile($cachefile);
   exit;
 }
 // if there is either no file OR the file to too old, render the page and capture the HTML.
@@ -30,13 +30,49 @@ $script = basename ( __FILE__ );
 <head>
 <link rel="stylesheet" type="text/css" href="./style.css">
 <script src="sorttable.js"></script>
+
+  <title>Gutenovox</title>
+
+        <!-- meta -->
+        <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=9,chrome=1">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no" />
+
+    <meta name="author" content="xenotropic.net">
+        <meta name="description" content="Gutenovox - Finding Gutenberg texts to read for LibriVox">
+        <meta name="keywords" content="Librivox, Gutenberg, etexts, audiobooks">
+
+        <!-- we are minifying and combining all our css, use styles.css for non-minified -->
+        <link href="assets/css/minified.css.php" rel="stylesheet">
+
+        <!-- grab jquery from google cdn. fall back to local if offline -->
+    <script src="assets/js/jquery.js"></script>
+
+    <!-- asynchronous google analytics. change UA-XXXXX-X to your site's ID -->
+        <script>
+  var _gaq=[['_setAccount','UA-26124742-1'],['_trackPageview']];
+(function(d,t){
+  var g=d.createElement(t),s=d.getElementsByTagName(t)[0];
+  g.src=('https:'==location.protocol?'//ssl':'//www')+'.google-analytics.com/ga.js';
+  s.parentNode.insertBefore(g,s)
+    }(document,'script'));
+        </script>
+
 </head>
 
 <body>
+<div style="background-image:url(assets/img/backgrounds/bg_vichy.png); bottom:0">
+<div class="boxed bg-whitewall" style="padding: 20px">
 
-  <p>  <b><u><a href="<? echo $script; ?>">Gutenovox</u></b></a> <p> Searches the Project Gutenberg catalog and shows which works have been recorded in Librivox. May miss some recordings, so double-check against the official LibriVox catalog to be sure.
-<p><form>Enter author last name: <input type=text name=author><input type=submit></form>
-<p><form>Or search for categories: <input type=text name=cat_search><input type=submit></form>
+<div class="two_third">  <p><h1><a href="<? echo $script; ?>">Gutenovox</a></h1>Searches the Project Gutenberg catalog and shows which works have been recorded in Librivox. Some recordings do not show up, so double-check against the official LibriVox catalog to be sure. Click on column headings to sort.
+</div>
+<br clear="all">
+																								 <p> &nbsp; <p>
+																								 <div class="one_full"><form>Search categories: <input  class="fifty green" placeholder="e.g., 'stories', 'history', 'tales', or 'science fiction'" type=text name=cat_search> <input type=submit value="Submit" class="button green small"></form></div>
+<br clear="all">																							   
+	    <div class="one_full"><form>Search last name: &nbsp;<input class="fifty green" type=text name=author placeholder="e.g., 'Twain', 'Dickinson', or 'Vonnegut'"> <input type=submit value="Submit" class="button green small"></form></div>
+<br clear="all">
+<hr>
 <?
 
 
@@ -94,8 +130,8 @@ if ($_GET['author'] != null ||
       echo "<tr><td><a href=\"./" . $script . "?contrib_gid=" . $co_id . "\">" . $co_name . "</a></td></tr>";
       $n++;
     }
+    if ( $n == 0 ) echo "<tr><td>No contributors found like <b>'". $_GET['author'].".'</b></td></tr>";
     echo "</table>";
-    if ( $n == 0 ) echo "No contributors found like <b>'". $_GET['author'].".'</b>";
     /* */
   }  // end author
 
@@ -113,7 +149,7 @@ if ($_GET['author'] != null ||
     $first = true;
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC) ) {
       if ( $first )  {
-	echo "Category: <b>$category</b> <p><table class=sortable>";
+	echo "Category: <b>$category</b> <p> &nbsp;<p><table class=sortable>";
 	echo "<colgroup> <col span=\"1\" style=\"width: 25%;\"> <col span=\"1\" style=\"width: 50%;\"> <col span=\"1\" style=\"width: 10%;\"> <col span=\"1\" style=\"width: 10%;\">  </colgroup>";
 	echo "<tr><th>Author</th><th>Title</th><th>LibriVox Recordings</th><th>Est. Read Time</th></tr>";
 	$first = false;
@@ -185,7 +221,9 @@ if ($_GET['author'] != null ||
 	$title = str_replace ( '\n', " - ", $title); 
 	$title = str_replace ( '\"', "\"", $title); 
 	//	echo "<tr><td>$title (".$row['etext_id'].")</td><td>";
-	echo "<tr><td>$title</td><td>";
+
+	// <a target=\"_guten\"href=\"http://www.gutenberg.org/ebooks/" . $row['etext_id'] . "\">" . $title . "</a>
+	echo "<tr><td><a target=\"_guten\"href=\"http://www.gutenberg.org/ebooks/" . $row['etext_id'] . "\">" . $title . "</a></td><td>";
 	$recording_urls = getLVRecordingsForGID ( $librivox_entries, $row['etext_id'], $title );
 	if ( ! empty ($recording_urls) ) {
 	  $n = 1;
@@ -310,10 +348,12 @@ function getReadTimeForEtext ( $etext_id ) {
     if ( endsWith ( $row['url'], 'txt' ) ) $file_size = $row['size'];
   }  
   if ( $file_size == -1 ) return ("Unknown"); 
+  $file_size -= 18233; // Not counting gutenberg license
+
   // return ( round ($file_size/1421)  . " mins"  );
   //  if ( $file_size < 85260 ) return ( (round ($file_size/1421) ) . " mins");
-  $hours = floor ( ($file_size/1421)/60  );
-  $minutes = (round ( $file_size/1421) ) % 60;
+  $hours = floor ( ($file_size/900)/60  );
+  $minutes = (round ( $file_size/900) ) % 60;
   return ( "$hours h $minutes min" );
 }
 
@@ -331,7 +371,12 @@ function endsWith($haystack, $needle)
 ?>
 
 
-<p>&nbsp;<p><small><a href="https://github.com/xenotropic/gutenovox">Source Code</a></small>
+<p>&nbsp;<p><small><a href="https://github.com/xenotropic/gutenovox">Source code</a> &nbsp; | &nbsp; <a href="mailto:joe@xenotropic.net?Subject=Gutenovox">Email me</a></small>
+</div>
+</div>
+
+<div style="background-image:url(assets/img/backgrounds/bg_vichy.png)">
+</div>
 </body>
 </html>
 
